@@ -1,0 +1,164 @@
+---
+title: "Quarterback Success"
+author: "Mark Belgeri"
+date: "2023-11-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Quarterbacks are typically judged on their positive tendencies per play and their ability to avoid negative events. in this sense the gold standards for these judgements have long been considered completion percentage and interceptions. But my assertion is that a better way to judge productivity per pass than completion percentage is yards per pass attempt and a better way to judge a player's ability to avoid negative tendencies than avoiding interceptions is said player's ability to avoid sacks. I believe that yards per pass attempt has a stronger positive correlation with quarterback success than does completion percentage. I also believe that sacks have a stronger negative correlation with quarterback success than do interceptions. For this purpose I first needed to define "success". My first thought was whether or not it leads to wins. This led me to the question of what it means to lead a team to wins as a quarterback. From this I figured the best definition of success is for a quarterback is the number of points he leads his team to. With wins and points in mind I decided the best demonstration of tendency would be a series of regressions and correlations with scatter plots and regression lines to visually represent the data. The questions I decided to answer were "Is there a correlation between yards per pass attempt and wins?", "Is there a correlation between sacks and wins?", "If I combine the regression of both yards per pass attempt and sacks relative to wins what is correlation there?", "Is there a correlation between between yards per pass attempt and points scored?", "Is there a correlation between sacks and points scored?",  "If I combine the regression of both yards per pass attempt and sacks relative to points scored what is correlation there?", "What is the correlation between interceptions and points scored?" "What is the correlation between completion percentage and points scored?", "What is the correlation between interceptions with completion percentage versus points scored?" "Is Yards per attempt more strongly correlated with points than completion percentage is correlated with points?", "Do sacks have a stronger negative correlation with points than interceptions with points?" and finally "Does the combination of sacks and yards per pass attempt correlate more strongly with points than does the combination of interceptions and completion percentage?". 
+```{r}
+library(dplyr) ##I needed this for the filter functions
+library(ggplot2) ##I needed this to make that first graph
+library(tidyverse) ##I needed this to open the csv document in r
+QBdata <- read.csv("C:/Users/mbel8/OneDrive/Desktop/data 2401 part 3/Game_Logs_Quarterback2.csv")
+glimpse(QBdata)
+
+QBdata$Sacks <- as.numeric(QBdata$Sacks) ##I had to modify the data so it could be recognized as a number rather than a string.
+QBdata$Passes.Attempted <- as.numeric(QBdata$Passes.Attempted) ##I had to modify the data so it could be recognized as a number rather than a string.
+QBdata$Passing.Yards.Per.Attempt <- as.numeric(QBdata$Passing.Yards.Per.Attempt) ##I had to modify the data so it could be recognized as a number rather than a string.
+```
+
+```{r}
+
+QBdata2 <- QBdata %>%
+  filter(Passes.Attempted >= 14) %>% ## I filtered to a minimum of 14 pass attempts because the minimum number of pass attempts the NFL allows to qualify for leaderboards is 14 per team game.
+  filter(Season == "Regular Season")%>%
+  filter(Games.Started == 1) ##I filtered it to only starting to avoid having multiple quarterbacks from the same team from the same game.
+```
+First thing I did was visualize the data of wins, losses and ties relative to yards per pass attempt to ensure that I was on the right track.
+```{r}
+ggplot(QBdata2, aes(Passing.Yards.Per.Attempt, Sacks, color = Outcome)) + geom_point()
+```
+Next I wanted to visualize the relationship between wins and yards per pass attempt. And find the correlation between the 2. In order to do this I created an extra column in the original excel file that converted wins to 1, ties to .5, and losses to 0. The equation of the regression produced is "win probability = (.092301 * Passing.Yards.Per.Attempt) - .137784".
+```{r}
+winprob <- lm(Outcome2 ~ Passing.Yards.Per.Attempt, QBdata2)## this is the regression that shows the relationship between wins and yards per pass attempt
+
+
+plot(QBdata2$Passing.Yards.Per.Attempt, QBdata2$Outcome2) + abline(winprob) ##This is a scatterplot of the relationship of outcome (Wins = 1, Ties = .5, losses = 0) and yards per pass attempt.
+
+summary(winprob) ##This summarizes the regression that shows the relationship between wins and yards per pass attempt. The line for the regression is "y = .092301x - .137784" with "y" representing wins and "x" representing yards per pass attempt.
+
+YPAtoWINS <- cor(QBdata2$Outcome2, QBdata2$Passing.Yards.Per.Attempt)##This is the correlation between wins and yards per pass attempt.
+print(YPAtoWINS)
+```
+What is the relationship between Sacks and wins?
+
+```{r}
+winprob2 <- lm(Outcome2 ~ Sacks, QBdata2)## This is the regression that shows the relationship between sacks and wins.
+
+plot(QBdata2$Sacks, QBdata2$Outcome2) + abline(winprob2) ##This is the scatterplot of wins vs sacks with the regression line laid over it.
+summary(winprob2) ##This summarizes the regression of the relationships between sacks and wins. the equation for the regression is "y = -.081591x + .692536". 
+SACKStoWINS <- cor(QBdata2$Outcome2, QBdata2$Sacks)
+print(SACKStoWINS)
+```
+After learning the regression line for sacks vs wins and yards per attempt vs wins i added them together in the excel document to create the column "Combined Value". The formula is "Combined Value = (.092301 * Passing Yards Per Attempt) - (.081591 * Sacks) + .554752". I did not weight the regressions. They were treated equally.
+
+What is the relationship between yards per pass attempt and sacks versus wins?
+
+```{r}
+QBdata2$Combined.Value <- as.numeric(QBdata2$Combined.Value) ##I combined the regressions of yards per pass attempt vs wins and sacks vs wins into a formula that gave a set of values that are now the variable "Combined.Value"
+combinedvalue <- lm(Outcome2 ~ Combined.Value, QBdata2) ##this is the regression between wins and the combination of sacks and yards per pass attempt vs wins
+plot(QBdata2$Combined.Value, QBdata2$Outcome2) + abline(combinedvalue) ##This is the visualization of the above mentioned regression
+summary(combinedvalue) ##this is the summary of the above mentioned regression
+YPAandSACKSversusWINS <- cor(QBdata2$Outcome2, QBdata2$Combined.Value) ##this is the correlation between the combined value and wins.
+print(YPAandSACKSversusWINS)
+```
+
+I did not like the resulting correlation so I decide there must be a better variable than wins to represent a quarterback's success. I decided that that variable is the number of points their team scores.
+
+What is the relationship between yards per pass attempt and points scored?
+
+
+```{r}
+QBdata2$Team.Score <- as.numeric(QBdata2$Team.Score) ##I created a variable in the Excel file called "Team score" this is me converting it to numbers instead of strings.
+ScorePrediction <- lm(Team.Score ~ Passing.Yards.Per.Attempt, QBdata2) ##This is the regression between Team.Score and Passing.Yards.Per.Attempt
+
+plot(QBdata2$Passing.Yards.Per.Attempt, QBdata2$Team.Score) + abline(ScorePrediction)##this is the visualization of the above mentioned regression 
+summary(ScorePrediction)##this is the summary of the above mentioned regression the equation for the regression is y = 2.91657x + 1.20515
+YPAtoPOINTS <- cor(QBdata2$Passing.Yards.Per.Attempt, QBdata2$Team.Score)##this is the correlation coefficient of the above mentioned regression
+print(YPAtoPOINTS)
+```
+What is the relationship between points scored and sacks given up?
+```{r}
+ScorePrediction2 <- lm(Team.Score ~ Sacks, QBdata2)##This is a the regression between the team score and number of sacks on the quarterback
+
+plot(QBdata2$Sacks, QBdata2$Team.Score) + abline(ScorePrediction2)##this is the visualization of the above mentioned regression 
+summary(ScorePrediction2)##this is the summary of the above mentioned regression. The equation for the regression line is y = -1.7713x + 25.71347.
+SACKStoPOINTS <- cor(QBdata2$Sacks, QBdata2$Team.Score)##this is the correlation coefficient of the above mentioned regression
+print(SACKStoPOINTS)
+```
+After learning the regression line for sacks vs points and yards per attempt vs points I added them together in the excel document to create the column "Combined Value2". The formula is "Combined Value2 = (2.91657 * Passing Yards Per Attempt) - (1.7713 * Sacks) + 26.91862". I did not weight the regressions. They were treated equally.
+
+What is the relationship between the combination of yards per pass attempt and sacks versus team points scored?
+
+```{r}
+QBdata2$Combined.Value2 <- as.numeric(QBdata2$Combined.Value2) ## I made a variable that represents the  
+combinedValue2 <- lm(Team.Score ~ Combined.Value2, QBdata2)##this is a regression of the combination of Yards per pass attempt and sacks given up versus points scored by the team.
+plot(QBdata2$Combined.Value2, QBdata2$Team.Score) + abline(combinedValue2)##this is the visualization of the above mentioned regression 
+summary(combinedValue2)##this is the summary of the above mentioned regression
+YPAandSACKSversusPoints <- cor(QBdata2$Team.Score, QBdata2$Combined.Value2)##this is the correlation coefficient of the above mentioned regression
+print(YPAandSACKSversusPoints)
+```
+This new set of numbers produced a correlation coefficient of .5975. I found this to be a more acceptable correlation coefficient.
+
+What is the relationship between interceptions and points scored by the quarterback's team?
+```{r}
+QBdata2$Ints <- as.numeric(QBdata2$Ints) ##I converted the Ints variable into numeric code instead of strings.
+ScorePrediction3 <- lm(Team.Score ~ Ints, QBdata2)##this is the regression between team score and interceptions
+
+plot(QBdata2$Ints, QBdata2$Team.Score) + abline(ScorePrediction3)##this is the visualization of the above mentioned regression 
+summary(ScorePrediction3)##this is the summary of the above mentioned regression. the equation for the regression line y = -2.6286x + 24.364.
+INTStoPoints <- cor(QBdata2$Ints, QBdata2$Team.Score)##this is the correlation coefficient of the above mentioned regression
+print(INTStoPoints)
+```
+
+```{r}
+QBdata2$Completion.Percentage <- as.numeric(QBdata2$Completion.Percentage)## this converted the Completion.Percentage from strings to numeric code
+ScorePrediction4 <- lm(Team.Score ~ Completion.Percentage, QBdata2)##This is the linear regression between completion percentage and team score
+
+plot(QBdata2$Completion.Percentage, QBdata2$Team.Score) + abline(ScorePrediction4)##this is the visualization of the above mentioned regression 
+summary(ScorePrediction4)##this is the summary of the above mentioned regression. The equation for the regression line is y = .40067x - 2.375621
+CPtoPOINTS <- cor(QBdata2$Completion.Percentage, QBdata2$Team.Score)##this is the correlation coefficient of the above mentioned regression
+print(CPtoPOINTS)
+```
+After calculating the regression equations for the 2 variables I combine them to create the variable Combined.Value3. the equation is "Combined Value3 = (0.40067 * Completion Percentage) - (2.6286 * Ints) + 21.988379" with "Ints" being an abbreviation for Interceptions.
+```{r}
+QBdata2$Combined.Value3 <- as.numeric(QBdata2$Combined.Value3)##this variable represents an equation that is a combination of the regressions of Completion percentage vs team score and interceptions versus team score
+combinedValue3 <- lm(Team.Score ~ Combined.Value3, QBdata2)##this is the regression of the above variable vs team score
+plot(QBdata2$Combined.Value3, QBdata2$Team.Score) + abline(combinedValue3)##this is the visualization of the above mentioned regression 
+summary(combinedValue3)##this is the summary of the above mentioned regression
+CPandINTStoPOINTS <- cor(QBdata2$Team.Score, QBdata2$Combined.Value3)##this is the correlation coefficient of the above mentioned regression
+print(CPandINTStoPOINTS)
+```
+
+```{r}
+print("Which correlates more strongly with points? Yards per pass attempt or completion percentage?")
+if (abs(YPAtoPOINTS) > abs(CPtoPOINTS)) {
+  cat("Yards per pass attempt has a stronger correlation with points." )
+} else if (abs(CPtoPOINTS) > abs(YPAtoPOINTS)) {
+  cat("Completion percentage has a stronger correlation with points.")
+} else {
+  cat("Yards per pass attempt and completion percentage have the same correlation with points.")
+}
+
+print("Which correlates more strongly with points? Sacks or Interceptions?")
+if (abs(SACKStoPOINTS) > abs(INTStoPoints)) {
+  cat("Sacks have a stronger correlation with points." )
+} else if (abs(INTStoPoints) > abs(SACKStoPOINTS)) {
+  cat("Interceptions have a stronger correlation with points.")
+} else {
+  cat("Sacks and interceptions have the same correlation with points.")
+}
+
+print("Which combination correlates more strongly with points? Sacks with yards per pass attempt or Interceptions with completion percentage?")
+if (abs(YPAandSACKSversusPoints) > abs(CPandINTStoPOINTS)) {
+  cat("Sacks combined yards per pass attempt have a stronger correlation with points." )
+} else if (abs(CPandINTStoPOINTS) > abs(YPAandSACKSversusPoints)) {
+  cat("Interceptions with completion have a stronger correlation with points.")
+} else {
+  cat("Sacks with yards per pass attemptand interceptions with completion percentage have the same correlation with points.")
+}
+```
